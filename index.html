@@ -70,7 +70,7 @@
         }
 
         var uploadAndDisplay = function (file) {
-          var url = 'http://localhost:9292/upload_shp';
+          var url = 'http://localhost:9292/shp_to_geojson';
 
           var xhr = new XMLHttpRequest(),
               data = new FormData();
@@ -81,16 +81,27 @@
             var data = JSON.parse(xhr.responseText),
                 features = data.geojson,
                 file = data.file;
+            
+            var downloadLink = document.getElementById('download_link');
+
+            if (!downloadLink) {
+              downloadLink = document.createElement('a');
+              downloadLink.id = 'download_link';
+              downloadLink.innerHTML = 'Download GeoJSON';
+              document.getElementById('content').appendChild(downloadLink);
+            }
+
+            downloadLink.href = 'http://localhost:9292/files/' + file + '.geojson';
 
             var bbox = [];
 
             L.geoJson(features, {
               style: function (feature) {
                 return {
-                  color: '#ffff00',
+                  color: '#ff6600',
                   weight: 2,
-                  //fillColor: null,
-                  fillOpacity: 0
+                  fillColor: '#ff6600',
+                  fillOpacity: 0.1
                 };
               },
               onEachFeature: function (feature, layer) {
