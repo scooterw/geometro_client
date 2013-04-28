@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <link rel="stylesheet" href="css/normalize.css" />
+    <link rel="stylesheet" href="css/main.css" />
+    <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.5.1/leaflet.css" />
+    <!--[if lte IE 8]>
+      <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.5.1/leaflet.ie.css" />
+    <![endif]-->
+  </head>
+  <body>
+    <form id="upload_shp" method="POST" enctype="multipart/form-data" style="display:none;">
+      <input type="file" name="in_shp" id="in_shp" />
+    </form>
+    <div id="container">
+      <div id="main" role="main">
+        <div id="content">
+          <div id="map"></div>
+        </div>
+      </div>
+    </div>
+    <script src="http://cdn.leafletjs.com/leaflet-0.5.1/leaflet.js"></script>
+    <script type="text/javascript">
+      function makeMap () {
+        window.map = L.map('map').setView([38.992961, -104.789322], 16);
+
+        var baseLayer = L.tileLayer('http://{s}.mqcdn.com/tiles/1.0.0/map/{z}/{x}/{y}.jpg', {
+          subdomains: ['otile1', 'otile2', 'otile3', 'otile4']
+        }).addTo(map);
+      }
+    </script>
+    <script type="text/javascript">
+      function makeDropZone () {
+        if (!window.File || !window.FileReader) {
+          // fallback for shitty browsers
+        } else {
+          var zone = document.getElementById('map');
+
+          zone.addEventListener('dragenter', function (e) {
+            e.preventDefault();
+          }, false);
+
+          zone.addEventListener('dragleave', function (e) {
+            e.preventDefault();
+          }, false);
+
+          zone.addEventListener('dragover', function (e) {
+            e.preventDefault();
+          }, false);
+
+          zone.addEventListener('drop', function (e) {
+            e.preventDefault();
+
+            var dataTransfer = e.dataTransfer,
+                files = dataTransfer.files,
+                types = dataTransfer.types;
+
+            if (files) {
+              var file = files[0];
+
+              if (file.name.match(/.json|.geojson/)) {
+                readGeoJson(file);
+              }
+
+              if (file.name.match(/.zip/)) {
+                uploadAndDisplay(file);
+              }
+            }
+          }, false);
+        }
+
+        var uploadAndDisplay = function (file) {
+          var url = 'http://localhost:9292/upload_shp';
+
+          var xhr = new XMLHttpRequest(),
+              data = new FormData();
+
+          data.append('shp', file);
+
+          xhr.onload = function () {
+            var data = JSON.parse(xhr.responseText),
+                features = data.geojson,
+                file = data.file;
+
+            var bbox = [];
+
+            L.geoJson(features, {
+              style: function (feature) {
+                return {
+                  color: '#ffff00',
+                  weight: 2,
+                  //fillColor: null,
+                  fillOpacity: 0
+                };
+              },
+              onEachFeature: function (feature, layer) {
+                var props = feature.properties,
+                    content = [];
+
+                for (var prop in props) {
+                  content.push('<strong>' + prop + '</strong>: ' + props[prop]);
+                }
+
+                var latlngs = layer._latlngs;
+
+                if (bbox[0] === undefined)
+                  bbox[0] = latlngs[0].lng;
+
+                if (bbox[1] === undefined)
+                  bbox[1] = latlngs[0].lat;
+
+                if (bbox[2] === undefined)
+                  bbox[2] = latlngs[0].lng;
+
+                if (bbox[3] === undefined)
+                  bbox[3] = latlngs[0].lat;
+
+                var len = latlngs.length;
+
+                while (len--) {
+                  var lat = latlngs[len].lat,
+                      lng = latlngs[len].lng;
+
+                  bbox[0] = Math.min(lng, bbox[0]);
+                  bbox[1] = Math.min(lat, bbox[1]);
+                  bbox[2] = Math.max(lng, bbox[2]);
+                  bbox[3] = Math.max(lat, bbox[3]);
+                }
+
+                layer.bindPopup(content.join('<br />'));
+              }
+            }).addTo(map);
+
+            var sw = new L.LatLng(bbox[1], bbox[0]),
+                ne = new L.LatLng(bbox[3], bbox[2]);
+
+            map.fitBounds(new L.LatLngBounds(sw, ne));
+          };
+
+          xhr.open('POST', url, true);
+          xhr.send(data);
+        };
+
+        var readGeoJson = function (file) {
+          if (file.data) {
+            // yup
+          } else {
+            var reader = new FileReader();
+
+            reader.onload = function () {
+              L.geoJson(JSON.parse(reader.result), {
+                pointToLayer: function (feature, latlng) {
+                  return L.circleMarker(latlng);
+                },
+                onEachFeature: function (feature, layer) {
+                  var props = [];
+
+                  for (var prop in feature.properties) {
+                    props.push('<strong>' + prop + '</strong>: ' + feature.properties[key]);
+                  }
+
+                  layer.bindPopup(props.join('<br />'));
+                }
+              }).addTo(map);
+            };
+
+            reader.readAsText(file);
+          }
+        };
+      }
+    </script>
+    <script type="text/javascript">
+      window.onload = function () {
+        makeMap();
+        makeDropZone();
+      };
+    </script>
+  </body>
+</html>
