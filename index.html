@@ -93,9 +93,12 @@
 
             downloadLink.href = 'http://localhost:9292/files/' + file + '.geojson';
 
-            var bbox = [];
+            var bbox = [180, 90, -180, -90];
 
             L.geoJson(features, {
+              pointToLayer: function (feature, latlng) {
+                return L.circleMarker(latlng);
+              },
               style: function (feature) {
                 return {
                   color: '#ff6600',
@@ -112,25 +115,22 @@
                   content.push('<strong>' + prop + '</strong>: ' + props[prop]);
                 }
 
-                var latlngs = layer._latlngs;
+                if (layer._latlngs) {
+                  var latlngs = layer._latlngs,
+                      len = latlngs.length;
 
-                if (bbox[0] === undefined)
-                  bbox[0] = latlngs[0].lng;
+                  while (len--) {
+                    var lat = latlngs[len].lat,
+                        lng = latlngs[len].lng;
 
-                if (bbox[1] === undefined)
-                  bbox[1] = latlngs[0].lat;
-
-                if (bbox[2] === undefined)
-                  bbox[2] = latlngs[0].lng;
-
-                if (bbox[3] === undefined)
-                  bbox[3] = latlngs[0].lat;
-
-                var len = latlngs.length;
-
-                while (len--) {
-                  var lat = latlngs[len].lat,
-                      lng = latlngs[len].lng;
+                    bbox[0] = Math.min(lng, bbox[0]);
+                    bbox[1] = Math.min(lat, bbox[1]);
+                    bbox[2] = Math.max(lng, bbox[2]);
+                    bbox[3] = Math.max(lat, bbox[3]);
+                  }
+                } else if (layer._latlng) {
+                  var lat = layer._latlng.lat,
+                      lng = layer._latlng.lng;
 
                   bbox[0] = Math.min(lng, bbox[0]);
                   bbox[1] = Math.min(lat, bbox[1]);
